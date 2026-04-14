@@ -1,0 +1,3 @@
+run_id,workflow_name,branch,actor_login,status,duration_seconds,is_completed,is_main_branch,previous_failures_last_3,previous_failures_last_5,failure_streak_before_run,run_hour,run_day_of_week,target
+24426235130,CloudCart CI,main,Kiransai006,completed,12.0,1,1,0.0,0.0,0,22,1,1
+24426362889,CloudCart CI,main,Kiransai006,completed,16.0,1,1,1.0,1.0,1,22,1,1

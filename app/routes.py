@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from ci_monitoring.db_utils import get_ci_summary
 from datetime import datetime
 from functools import wraps
 from bson import ObjectId
@@ -264,6 +264,12 @@ def register_routes(app):
             user_count=user_count,
             latest_orders=latest_orders,
         )
+
+    @app.route("/ci-dashboard")
+    @login_required
+    def ci_dashboard():
+        data = get_ci_summary()
+        return render_template("ci_dashboard.html", data=data)
 
     @app.route("/admin")
     @login_required

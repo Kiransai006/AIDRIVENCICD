@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CI/CD Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            margin: 0;
+            padding: 0;
+            color: #111827;
+        }
+        .container {
+            width: 92%;
+            margin: 30px auto;
+        }
+        h1, h2 {
+            color: #1f2937;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 25px 0;
+        }
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        }
+        .card h3 {
+            margin: 0 0 12px 0;
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .card p {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+            color: #111827;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        }
+        th, td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #111827;
+            color: white;
+        }
+        td {
+            color: #111827 !important;
+            background: white;
+            font-weight: 500;
+        }
+        tr:hover td {
+            background: #f9fafb;
+        }
+        a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-success {
+            background: #dcfce7;
+            color: #166534 !important;
+        }
+        .badge-failure {
+            background: #fee2e2;
+            color: #991b1b !important;
+        }
+        .badge-running {
+            background: #dbeafe;
+            color: #1d4ed8 !important;
+        }
+        .badge-neutral {
+            background: #e5e7eb;
+            color: #374151 !important;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #6b7280 !important;
+        }
+        @media (max-width: 900px) {
+            .cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .cards {
+                grid-template-columns: 1fr;
+            }
+            table {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CI/CD Monitoring Dashboard</h1>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Total Runs</h3>
+                <p>{{ data.total_runs }}</p>
+            </div>
+            <div class="card">
+                <h3>Success</h3>
+                <p>{{ data.success_runs }}</p>
+            </div>
+            <div class="card">
+                <h3>Failure</h3>
+                <p>{{ data.failure_runs }}</p>
+            </div>
+            <div class="card">
+                <h3>Avg Duration (s)</h3>
+                <p>{{ data.avg_duration }}</p>
+            </div>
+        </div>
+
+        <h2>Recent Workflow Runs</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Run ID</th>
+                    <th>Workflow</th>
+                    <th>Status</th>
+                    <th>Conclusion</th>
+                    <th>Branch</th>
+                    <th>Actor</th>
+                    <th>Created At</th>
+                    <th>Duration</th>
+                    <th>Link</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if data.recent_runs %}
+                    {% for row in data.recent_runs %}
+                    <tr>
+                        <td>{{ row.run_id }}</td>
+                        <td>{{ row.workflow_name or "N/A" }}</td>
+                        <td>
+                            {% if row.status == "completed" %}
+                                <span class="badge badge-success">{{ row.status }}</span>
+                            {% elif row.status == "in_progress" %}
+                                <span class="badge badge-running">{{ row.status }}</span>
+                            {% else %}
+                                <span class="badge badge-neutral">{{ row.status or "N/A" }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.conclusion == "success" %}
+                                <span class="badge badge-success">{{ row.conclusion }}</span>
+                            {% elif row.conclusion == "failure" %}
+                                <span class="badge badge-failure">{{ row.conclusion }}</span>
+                            {% else %}
+                                <span class="badge badge-neutral">{{ row.conclusion or "N/A" }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.branch or "N/A" }}</td>
+                        <td>{{ row.actor_login or "N/A" }}</td>
+                        <td>{{ row.created_at or "N/A" }}</td>
+                        <td>{{ row.duration_seconds if row.duration_seconds is not none else "N/A" }}</td>
+                        <td>
+                            {% if row.html_url %}
+                                <a href="{{ row.html_url }}" target="_blank">Open</a>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="empty-state">No CI/CD workflow runs found.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
