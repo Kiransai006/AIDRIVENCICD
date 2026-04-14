@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}CloudCart · Home{% endblock %}
+{% block content %}
+<section class="hero-card p-5 mb-5">
+  <div class="row align-items-center g-4">
+    <div class="col-lg-7">
+      <span class="badge text-bg-info mb-3">Cloud Look + MongoDB</span>
+      <h1 class="display-5 fw-bold text-white">A modern e-commerce experience built for clean demos and fast deployment.</h1>
+      <p class="lead text-white-50">Browse curated products, manage your cart, place demo orders, and control inventory from a simple admin panel.</p>
+      <div class="d-flex gap-3 flex-wrap">
+        <a href="{{ url_for('products') }}" class="btn btn-info btn-lg text-dark fw-semibold">Shop now</a>
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light btn-lg">Open dashboard</a>
+        {% else %}
+        <a href="{{ url_for('register') }}" class="btn btn-outline-light btn-lg">Create account</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="stats-grid">
+        <div class="mini-stat"><span>MongoDB</span><strong>Ready</strong></div>
+        <div class="mini-stat"><span>Auth</span><strong>Built in</strong></div>
+        <div class="mini-stat"><span>Admin</span><strong>Included</strong></div>
+        <div class="mini-stat"><span>Deploy</span><strong>Render-ready</strong></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="section-title">Featured products</h2>
+    <a href="{{ url_for('products') }}" class="link-light">View all</a>
+  </div>
+  <div class="row g-4">
+    {% for product in featured %}
+      <div class="col-md-6 col-xl-3">{% include 'partials/product_card.html' %}</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section>
+  <h2 class="section-title mb-3">Latest arrivals</h2>
+  <div class="row g-4">
+    {% for product in latest %}
+      <div class="col-md-6 col-xl-4">{% include 'partials/product_card.html' %}</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

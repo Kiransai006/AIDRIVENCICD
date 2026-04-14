@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard · CloudCart{% endblock %}
+{% block content %}
+<h1 class="section-title mb-4">Welcome, {{ current_user.name }}</h1>
+<div class="row g-4 mb-4">
+  <div class="col-md-4"><div class="metric-card"><span>Orders</span><strong>{{ my_orders }}</strong></div></div>
+  <div class="col-md-4"><div class="metric-card"><span>Products</span><strong>{{ product_count }}</strong></div></div>
+  <div class="col-md-4"><div class="metric-card"><span>Users</span><strong>{{ user_count }}</strong></div></div>
+</div>
+<div class="glass-panel p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="section-title m-0">Recent orders</h2>
+    <a href="{{ url_for('orders') }}" class="btn btn-outline-light btn-sm">View all</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle mb-0">
+      <thead><tr><th>ID</th><th>Customer</th><th>Status</th><th>Total</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for order in latest_orders %}
+        <tr>
+          <td>{{ order._id[:8] }}</td>
+          <td>{{ order.customer_name }}</td>
+          <td><span class="badge text-bg-info">{{ order.status }}</span></td>
+          <td>€{{ '%.2f'|format(order.total) }}</td>
+          <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-white-50">No orders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

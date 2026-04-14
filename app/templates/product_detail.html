@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}{{ product.name }} · CloudCart{% endblock %}
+{% block content %}
+<div class="row g-5 align-items-start">
+  <div class="col-lg-6">
+    <img src="{{ product.image }}" alt="{{ product.name }}" class="product-detail-image shadow-lg">
+  </div>
+  <div class="col-lg-6">
+    <span class="badge text-bg-info mb-3">{{ product.category }}</span>
+    <h1 class="text-white">{{ product.name }}</h1>
+    <p class="lead text-white-50">{{ product.short_description }}</p>
+    <h3 class="text-info mb-4">€{{ '%.2f'|format(product.price) }}</h3>
+    <p class="text-white-50">{{ product.description }}</p>
+    <p class="small text-white-50">Stock available: {{ product.stock }}</p>
+    <form method="post" action="{{ url_for('add_to_cart', product_id=product._id) }}" class="row g-3 mt-2">
+      <div class="col-auto">
+        <input type="number" class="form-control" name="quantity" value="1" min="1">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-info text-dark fw-semibold">Add to cart</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

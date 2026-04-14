@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Register · CloudCart{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+  <div class="glass-panel p-4 p-lg-5 auth-card wide">
+    <h1 class="section-title mb-4">Create account</h1>
+    <form method="post" class="row g-3">
+      <div class="col-md-6"><label class="form-label">Name</label><input name="name" class="form-control" required></div>
+      <div class="col-md-6"><label class="form-label">Email</label><input type="email" name="email" class="form-control" required></div>
+      <div class="col-md-6"><label class="form-label">Password</label><input type="password" name="password" class="form-control" required></div>
+      <div class="col-md-6"><label class="form-label">Confirm password</label><input type="password" name="confirm_password" class="form-control" required></div>
+      <div class="col-12 d-grid"><button class="btn btn-info text-dark fw-semibold">Create account</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block title %}Orders · CloudCart{% endblock %}
+{% block content %}
+<div class="glass-panel p-4">
+  <h1 class="section-title mb-3">Orders</h1>
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle mb-0">
+      <thead><tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Status</th><th>Items</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td>{{ order._id[:8] }}</td>
+          <td>{{ order.customer_name }}</td>
+          <td>€{{ '%.2f'|format(order.total) }}</td>
+          <td>{{ order.status }}</td>
+          <td>{{ order.items|length }}</td>
+          <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-white-50">No orders found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

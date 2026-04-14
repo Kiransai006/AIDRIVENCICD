@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}CloudCart · Products{% endblock %}
+{% block content %}
+<div class="glass-panel p-4 mb-4">
+  <form class="row g-3 align-items-end" method="get">
+    <div class="col-md-5">
+      <label class="form-label">Search</label>
+      <input name="search" class="form-control" placeholder="Search products" value="{{ search }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Category</label>
+      <select class="form-select" name="category">
+        <option value="">All categories</option>
+        {% for category in categories %}
+        <option value="{{ category }}" {% if category == selected_category %}selected{% endif %}>{{ category }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-grid">
+      <button class="btn btn-info text-dark fw-semibold">Apply filters</button>
+    </div>
+  </form>
+</div>
+<div class="row g-4">
+  {% for product in products %}
+    <div class="col-md-6 col-xl-4">{% include 'partials/product_card.html' %}</div>
+  {% else %}
+    <div class="col-12"><div class="alert alert-info">No products found.</div></div>
+  {% endfor %}
+</div>
+{% endblock %}

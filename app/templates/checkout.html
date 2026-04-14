@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block title %}Checkout · CloudCart{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="glass-panel p-4">
+      <h2 class="section-title mb-3">Shipping details</h2>
+      <form method="post" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Customer name</label>
+          <input name="customer_name" class="form-control" required value="{{ current_user.name }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Address</label>
+          <textarea name="address" class="form-control" rows="4" required placeholder="Enter delivery address"></textarea>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-info text-dark fw-semibold btn-lg">Place order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="glass-panel p-4">
+      <h3 class="section-title mb-3">Order summary</h3>
+      <ul class="list-group list-group-flush mb-3">
+        {% for item in items %}
+        <li class="list-group-item d-flex justify-content-between bg-transparent text-white border-secondary-subtle">
+          <span>{{ item.name }} × {{ item.quantity }}</span>
+          <span>€{{ '%.2f'|format(item.price * item.quantity) }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="d-flex justify-content-between fs-5 fw-bold">
+        <span>Total</span>
+        <span>€{{ '%.2f'|format(total) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

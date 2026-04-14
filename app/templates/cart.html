@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Cart · CloudCart{% endblock %}
+{% block content %}
+<h1 class="section-title mb-4">Your cart</h1>
+{% if items %}
+<div class="glass-panel p-4">
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle mb-0">
+      <thead><tr><th>Product</th><th>Price</th><th>Quantity</th><th>Total</th><th></th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.name }}</td>
+          <td>€{{ '%.2f'|format(item.price) }}</td>
+          <td>
+            <form method="post" action="{{ url_for('update_cart', product_id=item.product_id) }}" class="d-flex gap-2">
+              <input type="number" min="0" name="quantity" value="{{ item.quantity }}" class="form-control form-control-sm" style="max-width:100px">
+              <button class="btn btn-sm btn-outline-info">Update</button>
+            </form>
+          </td>
+          <td>€{{ '%.2f'|format(item.line_total) }}</td>
+          <td>
+            <form method="post" action="{{ url_for('remove_from_cart', product_id=item.product_id) }}">
+              <button class="btn btn-sm btn-outline-danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-3">
+    <strong class="fs-4">Subtotal: €{{ '%.2f'|format(subtotal) }}</strong>
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('checkout') }}" class="btn btn-info text-dark fw-semibold btn-lg">Proceed to checkout</a>
+    {% else %}
+      <a href="{{ url_for('login') }}" class="btn btn-info text-dark fw-semibold btn-lg">Login to checkout</a>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">Your cart is empty. <a href="{{ url_for('products') }}">Browse products</a>.</div>
+{% endif %}
+{% endblock %}
