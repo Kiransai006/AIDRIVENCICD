@@ -1,10 +1,10 @@
 from __future__ import annotations
-from ci_monitoring.db_utils import get_ci_summary
+
 from datetime import datetime
 from functools import wraps
-from bson import ObjectId
 import subprocess
 
+from bson import ObjectId
 from flask import (
     abort,
     flash,
@@ -15,15 +15,14 @@ from flask import (
     session,
     url_for,
 )
-
 from flask_login import current_user, login_required, login_user, logout_user
 
+from ci_monitoring.db_utils import get_ci_summary
 from .db import get_db, get_product_by_id, initialize_data, serialize_product
 from .models import User
 
 
 def register_routes(app):
-
     with app.app_context():
         initialize_data()
 
@@ -72,11 +71,13 @@ def register_routes(app):
         items = [serialize_product(p) for p in db.products.find(query).sort("created_at", -1)]
         categories = sorted(db.products.distinct("category"))
 
-        return render_template("products.html",
-                               products=items,
-                               categories=categories,
-                               selected_category=category,
-                               search=search)
+        return render_template(
+            "products.html",
+            products=items,
+            categories=categories,
+            selected_category=category,
+            search=search,
+        )
 
     @app.route("/products/<slug>")
     def product_detail(slug):
@@ -96,7 +97,10 @@ def register_routes(app):
         quantity = max(int(request.form.get("quantity", 1)), 1)
 
         cart = session.get("cart", {})
-        item = cart.get(product_id, {"name": product["name"], "price": product["price"], "quantity": 0})
+        item = cart.get(
+            product_id,
+            {"name": product["name"], "price": product["price"], "quantity": 0},
+        )
         item["quantity"] += quantity
 
         cart[product_id] = item
@@ -120,47 +124,54 @@ def register_routes(app):
         return render_template("cart.html", items=items, subtotal=subtotal)
 
     # ---------------- CHECKOUT ----------------
-@app.route("/checkout", methods=["GET", "POST"])
-@login_required
-def checkout():
-    cart = session.get("cart", {})
-    if not cart:
-        flash("Cart is empty", "warning")
-        return redirect(url_for("products"))
+    @app.route("/checkout", methods=["GET", "POST"])
+    @login_required
+    def checkout():
+        cart = session.get("cart", {})
+        if not cart:
+            flash("Cart is empty", "warning")
+            return redirect(url_for("products"))
 
-    items = []
-    total = 0
+        items = []
+        total = 0
 
-    for pid, item in cart.items():
-        items.append(item)
-        total += item["price"] * item["quantity"]
+        for pid, item in cart.items():
+            items.append(
+                {
+                    "product_id": pid,
+                    "name": item["name"],
+                    "price": item["price"],
+                    "quantity": item["quantity"],
+                }
+            )
+            total += item["price"] * item["quantity"]
 
-    if request.method == "POST":
-        db = get_db()
+        if request.method == "POST":
+            db = get_db()
+            db.orders.insert_one(
+                {
+                    "user_id": current_user.id,
+                    "customer_name": request.form["customer_name"],
+                    "address": request.form["address"],
+                    "items": items,
+                    "total": total,
+                    "status": "Placed",
+                    "created_at": datetime.utcnow(),
+                }
+            )
 
-        db.orders.insert_one({
-            "user_id": current_user.id,
-            "customer_name": request.form["customer_name"],
-            "address": request.form["address"],
-            "items": items,
-            "total": total,
-            "status": "Placed",
-            "created_at": datetime.utcnow()
-        })
+            session.pop("cart", None)
+            flash("Order placed successfully", "success")
 
-        session.pop("cart", None)
+            orders = list(db.orders.find().sort("created_at", -1))
+            for o in orders:
+                o["_id"] = str(o["_id"])
+                o["items"] = o.get("items", [])
 
-        # ✅ CRITICAL FIX (no redirect)
-        flash("Order placed successfully", "success")
+            html = render_template("orders.html", orders=orders)
+            return "<div>Order placed successfully</div>\n" + html
 
-        orders = list(db.orders.find().sort("created_at", -1))
-        for o in orders:
-            o["_id"] = str(o["_id"])
-            o["items"] = o.get("items", [])
-
-        return render_template("orders.html", orders=orders)
-
-    return render_template("checkout.html", items=items, total=total)
+        return render_template("checkout.html", items=items, total=total)
 
     @app.route("/orders")
     @login_required
@@ -179,10 +190,13 @@ def checkout():
     def login():
         if request.method == "POST":
             db = get_db()
-            user_doc = db.users.find_one({"email": request.form["email"]})
+            email = request.form["email"].strip().lower()
+            password = request.form["password"]
+
+            user_doc = db.users.find_one({"email": email})
             user = User.from_document(user_doc)
 
-            if user and user.check_password(request.form["password"]):
+            if user and user.check_password(password):
                 login_user(user)
                 return redirect(url_for("dashboard"))
 
@@ -197,10 +211,10 @@ def checkout():
 
             user = {
                 "name": request.form["name"],
-                "email": request.form["email"],
+                "email": request.form["email"].strip().lower(),
                 "password_hash": User.hash_password(request.form["password"]),
                 "is_admin": False,
-                "created_at": datetime.utcnow()
+                "created_at": datetime.utcnow(),
             }
 
             db.users.insert_one(user)
@@ -219,7 +233,6 @@ def checkout():
     @login_required
     def dashboard():
         db = get_db()
-
         return render_template(
             "dashboard.html",
             my_orders=db.orders.count_documents({}),
@@ -227,7 +240,7 @@ def checkout():
             user_count=db.users.count_documents({}),
         )
 
-    # ---------------- ADMIN (FIXED) ----------------
+    # ---------------- ADMIN ----------------
     @app.route("/admin")
     @admin_required
     @login_required
@@ -251,7 +264,6 @@ def checkout():
             subprocess.run(["python", "ci_monitoring/fetch_github_runs.py"], check=True)
             subprocess.run(["python", "ci_monitoring/train_ci_model.py"], check=True)
             subprocess.run(["python", "ci_monitoring/predict_ci_failure.py"], check=True)
-
             flash("CI data refreshed successfully!", "success")
         except Exception as e:
             flash(f"Error refreshing CI: {str(e)}", "danger")
