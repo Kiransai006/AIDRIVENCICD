@@ -45,6 +45,7 @@ INSERT OR REPLACE INTO workflow_runs (
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 """
 
+
 def parse_duration_seconds(started_at: str | None, updated_at: str | None) -> float | None:
     if not started_at or not updated_at:
         return None
@@ -55,20 +56,40 @@ def parse_duration_seconds(started_at: str | None, updated_at: str | None) -> fl
     except Exception:
         return None
 
-def fetch_runs():
+
+def fetch_runs(max_pages=5):
     if not OWNER or not REPO or not TOKEN:
-        raise ValueError("Missing GITHUB_OWNER, GITHUB_REPO, or GITHUB_TOKEN in .env")
+        raise ValueError("Missing GITHUB_OWNER, GITHUB_REPO, or GITHUB_TOKEN in environment")
 
     headers = {
         "Accept": "application/vnd.github+json",
         "Authorization": f"Bearer {TOKEN}",
-        "X-GitHub-Api-Version": "2026-03-10",
+        "X-GitHub-Api-Version": "2022-11-28",
     }
 
-    response = requests.get(API_URL, headers=headers, params={"per_page": 100}, timeout=30)
-    response.raise_for_status()
-    data = response.json()
-    return data.get("workflow_runs", [])
+    all_runs = []
+    per_page = 100
+
+    for page in range(1, max_pages + 1):
+        response = requests.get(
+            API_URL,
+            headers=headers,
+            params={"per_page": per_page, "page": page},
+            timeout=30,
+        )
+        response.raise_for_status()
+
+        runs = response.json().get("workflow_runs", [])
+        if not runs:
+            break
+
+        all_runs.extend(runs)
+
+        if len(runs) < per_page:
+            break
+
+    return all_runs
+
 
 def save_runs(runs):
     db_file = Path(DB_PATH)
@@ -105,10 +126,18 @@ def save_runs(runs):
     conn.commit()
     conn.close()
 
+
 def main():
-    runs = fetch_runs()
-    save_runs(runs)
-    print(f"Saved {len(runs)} workflow runs into {DB_PATH}")
+    try:
+        print(f"OWNER={OWNER}, REPO={REPO}, DB_PATH={DB_PATH}")
+        runs = fetch_runs(max_pages=5)
+        print(f"Fetched {len(runs)} runs from GitHub")
+        save_runs(runs)
+        print(f"Saved {len(runs)} workflow runs into {DB_PATH}")
+    except Exception as e:
+        print(f"ERROR in fetch_github_runs.py: {e}")
+        raise
+
 
 if __name__ == "__main__":
     main()
