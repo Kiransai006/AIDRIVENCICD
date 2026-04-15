@@ -211,23 +211,36 @@ def register_routes(app):
         if request.method == "POST":
             db = get_db()
 
+            name = request.form["name"].strip()
             email = request.form["email"].strip().lower()
+            password = request.form["password"]
+            confirm_password = request.form.get("confirm_password", "")
+
+            if password != confirm_password:
+                flash("Passwords do not match", "danger")
+                return redirect(url_for("register"))
+
             existing_user = db.users.find_one({"email": email})
             if existing_user:
                 flash("Email already registered", "warning")
                 return redirect(url_for("register"))
 
-            user = {
-                "name": request.form["name"],
+            user_doc = {
+                "name": name,
                 "email": email,
-                "password_hash": User.hash_password(request.form["password"]),
+                "password_hash": User.hash_password(password),
                 "is_admin": False,
                 "created_at": datetime.utcnow(),
             }
 
-            db.users.insert_one(user)
+            result = db.users.insert_one(user_doc)
+            user_doc["_id"] = result.inserted_id
+
+            user = User.from_document(user_doc)
+            login_user(user)
+
             flash("Registered successfully", "success")
-            return redirect(url_for("login"))
+            return redirect(url_for("dashboard"))
 
         return render_template("register.html")
 
