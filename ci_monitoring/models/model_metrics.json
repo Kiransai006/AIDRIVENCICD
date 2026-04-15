@@ -1,0 +1,84 @@
+{
+  "best_model": "logistic_regression",
+  "results": {
+    "logistic_regression": {
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "classification_report": {
+        "0": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 1.0
+        },
+        "1": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 3.0
+        },
+        "accuracy": 1.0,
+        "macro avg": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 4.0
+        },
+        "weighted avg": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 4.0
+        }
+      }
+    },
+    "random_forest": {
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "classification_report": {
+        "0": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 1.0
+        },
+        "1": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 3.0
+        },
+        "accuracy": 1.0,
+        "macro avg": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 4.0
+        },
+        "weighted avg": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1-score": 1.0,
+          "support": 4.0
+        }
+      }
+    }
+  },
+  "train_rows": 4,
+  "test_rows": 4,
+  "feature_columns": [
+    "workflow_name",
+    "branch",
+    "actor_login",
+    "status",
+    "duration_seconds",
+    "is_completed",
+    "is_main_branch",
+    "previous_failures_last_3",
+    "previous_failures_last_5",
+    "failure_streak_before_run",
+    "run_hour",
+    "run_day_of_week"
+  ],
+  "used_full_dataset_fallback": true
+}

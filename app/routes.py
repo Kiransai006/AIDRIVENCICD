@@ -347,3 +347,19 @@ def register_routes(app):
         db.products.delete_one({"_id": ObjectId(product_id)})
         flash("Product deleted.", "info")
         return redirect(url_for("admin_panel"))
+    
+import subprocess
+
+@app.route("/refresh-ci", methods=["POST"])
+@login_required
+def refresh_ci():
+    try:
+        subprocess.run(["python", "ci_monitoring/fetch_github_runs.py"], check=True)
+        subprocess.run(["python", "ci_monitoring/train_ci_model.py"], check=True)
+        subprocess.run(["python", "ci_monitoring/predict_ci_failure.py"], check=True)
+
+        flash("CI data refreshed successfully!", "success")
+    except Exception as e:
+        flash(f"Error refreshing CI: {str(e)}", "danger")
+
+    return redirect(url_for("ci_dashboard"))

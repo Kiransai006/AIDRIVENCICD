@@ -1,10 +1,12 @@
 import os
 import sqlite3
+import pandas as pd
 from dotenv import load_dotenv
 
 load_dotenv()
 
 DB_PATH = os.getenv("CI_SQLITE_PATH", "data/processed/ci_monitoring.db")
+PREDICTIONS_PATH = "ci_monitoring/data/ci_model_predictions.csv"
 
 
 def get_ci_connection():
@@ -42,13 +44,13 @@ def get_ci_summary():
             html_url
         FROM workflow_runs
         ORDER BY created_at DESC
-        LIMIT 10
+        LIMIT 20
     """).fetchall()
 
     recent_runs = []
     for row in rows:
         recent_runs.append({
-            "run_id": row["run_id"],
+            "run_id": str(row["run_id"]),
             "workflow_name": row["workflow_name"],
             "status": row["status"],
             "conclusion": row["conclusion"],
@@ -60,6 +62,39 @@ def get_ci_summary():
         })
 
     conn.close()
+
+    # Merge ML predictions if available
+    if os.path.exists(PREDICTIONS_PATH):
+        pred_df = pd.read_csv(PREDICTIONS_PATH)
+        pred_df["run_id"] = pred_df["run_id"].astype(str)
+
+        pred_map = {}
+        for _, row in pred_df.iterrows():
+            pred_map[row["run_id"]] = {
+                "predicted_target": int(row["predicted_target"]),
+                "failure_probability": float(row["failure_probability"]),
+            }
+
+        for run in recent_runs:
+            pred = pred_map.get(run["run_id"])
+            if pred:
+                run["predicted_target"] = pred["predicted_target"]
+                run["failure_probability"] = round(pred["failure_probability"] * 100, 2)
+                if pred["failure_probability"] >= 0.8:
+                    run["risk_label"] = "High"
+                elif pred["failure_probability"] >= 0.5:
+                    run["risk_label"] = "Medium"
+                else:
+                    run["risk_label"] = "Low"
+            else:
+                run["predicted_target"] = None
+                run["failure_probability"] = None
+                run["risk_label"] = "N/A"
+    else:
+        for run in recent_runs:
+            run["predicted_target"] = None
+            run["failure_probability"] = None
+            run["risk_label"] = "N/A"
 
     return {
         "total_runs": total_runs,

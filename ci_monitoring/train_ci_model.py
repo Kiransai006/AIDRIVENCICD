@@ -44,6 +44,9 @@ def main():
     if "target" not in df.columns:
         raise ValueError("Dataset must contain 'target' column.")
 
+    class_counts = df["target"].value_counts().to_dict()
+    print("Target distribution:", class_counts)
+
     if df["target"].nunique() < 2:
         raise ValueError("Need both success and failure rows before training.")
 
@@ -78,16 +81,27 @@ def main():
         ]
     )
 
-    # Small dataset-safe split logic
-    stratify_target = y if y.value_counts().min() >= 2 and len(df) >= 6 else None
+    # Safer split logic for small datasets
+    min_class_count = y.value_counts().min()
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.3 if len(df) >= 6 else 0.5,
-        random_state=42,
-        stratify=stratify_target,
-    )
+    if len(df) < 6 or min_class_count < 2:
+        print("Dataset too small for train/test split. Training on full dataset.")
+        X_train, X_test = X, X
+        y_train, y_test = y, y
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=0.3,
+            random_state=42,
+            stratify=y,
+        )
+
+    # Final protection: if training set has one class, fall back to full dataset
+    if len(set(y_train)) < 2:
+        print("Training split has only one class. Falling back to full dataset.")
+        X_train, X_test = X, X
+        y_train, y_test = y, y
 
     models = build_models()
     results = {}
@@ -134,12 +148,12 @@ def main():
         "train_rows": int(len(X_train)),
         "test_rows": int(len(X_test)),
         "feature_columns": feature_cols,
+        "used_full_dataset_fallback": bool(len(X_train) == len(df) and len(X_test) == len(df)),
     }
 
     with open(METRICS_PATH, "w", encoding="utf-8") as f:
         json.dump(metrics_payload, f, indent=2)
 
-    # Save predictions for all current rows
     df_out = df.copy()
     df_out["predicted_target"] = best_pipeline.predict(X)
     if hasattr(best_pipeline.named_steps["model"], "predict_proba"):

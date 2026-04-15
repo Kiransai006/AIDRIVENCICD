@@ -1,3 +1,5 @@
 run_id,workflow_name,status,conclusion,branch,actor_login,created_at,duration_seconds
 24426235130,CloudCart CI,completed,failure,main,Kiransai006,2026-04-14T22:32:08Z,12.0
 24426362889,CloudCart CI,completed,failure,main,Kiransai006,2026-04-14T22:35:32Z,16.0
+24428458370,CloudCart CI,completed,failure,main,Kiransai006,2026-04-14T23:40:14Z,16.0
+24428589180,CloudCart CI,completed,success,main,Kiransai006,2026-04-14T23:44:20Z,11.0
