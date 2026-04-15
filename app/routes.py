@@ -147,12 +147,19 @@ def register_routes(app):
             total += item["price"] * item["quantity"]
 
         if request.method == "POST":
+            customer_name = request.form.get("customer_name", "").strip()
+            address = request.form.get("address", "").strip()
+
+            if not customer_name or not address:
+                flash("Customer name and address are required", "danger")
+                return redirect(url_for("checkout"))
+
             db = get_db()
             db.orders.insert_one(
                 {
                     "user_id": current_user.id,
-                    "customer_name": request.form["customer_name"],
-                    "address": request.form["address"],
+                    "customer_name": customer_name,
+                    "address": address,
                     "items": items,
                     "total": total,
                     "status": "Placed",
@@ -162,14 +169,7 @@ def register_routes(app):
 
             session.pop("cart", None)
             flash("Order placed successfully", "success")
-
-            orders = list(db.orders.find().sort("created_at", -1))
-            for o in orders:
-                o["_id"] = str(o["_id"])
-                o["items"] = o.get("items", [])
-
-            html = render_template("orders.html", orders=orders)
-            return "<div>Order placed successfully</div>\n" + html
+            return redirect(url_for("orders"))
 
         return render_template("checkout.html", items=items, total=total)
 
@@ -209,6 +209,11 @@ def register_routes(app):
         if request.method == "POST":
             db = get_db()
 
+            existing_user = db.users.find_one({"email": request.form["email"].strip().lower()})
+            if existing_user:
+                flash("Email already registered", "warning")
+                return redirect(url_for("register"))
+
             user = {
                 "name": request.form["name"],
                 "email": request.form["email"].strip().lower(),
@@ -235,15 +240,15 @@ def register_routes(app):
         db = get_db()
         return render_template(
             "dashboard.html",
-            my_orders=db.orders.count_documents({}),
+            my_orders=db.orders.count_documents({"user_id": current_user.id}),
             product_count=db.products.count_documents({}),
             user_count=db.users.count_documents({}),
         )
 
     # ---------------- ADMIN ----------------
     @app.route("/admin")
-    @admin_required
     @login_required
+    @admin_required
     def admin_panel():
         db = get_db()
         products = [serialize_product(p) for p in db.products.find()]
