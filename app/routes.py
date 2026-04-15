@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from functools import wraps
 import subprocess
+import sys
 
 from flask import (
     abort,
@@ -278,36 +279,36 @@ def register_routes(app):
         return render_template("ci_dashboard.html", data=data)
 
     # ---------------- REFRESH CI ----------------
-@app.route("/refresh-ci", methods=["POST"])
-@login_required
-def refresh_ci():
-    try:
-        result1 = subprocess.run(
-            [sys.executable, "ci_monitoring/fetch_github_runs.py"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        result2 = subprocess.run(
-            [sys.executable, "ci_monitoring/train_ci_model.py"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        result3 = subprocess.run(
-            [sys.executable, "ci_monitoring/predict_ci_failure.py"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+    @app.route("/refresh-ci", methods=["POST"])
+    @login_required
+    def refresh_ci():
+        try:
+            subprocess.run(
+                [sys.executable, "ci_monitoring/fetch_github_runs.py"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                [sys.executable, "ci_monitoring/train_ci_model.py"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            subprocess.run(
+                [sys.executable, "ci_monitoring/predict_ci_failure.py"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
-        flash("CI data refreshed successfully!", "success")
+            flash("CI data refreshed successfully!", "success")
 
-    except subprocess.CalledProcessError as e:
-        error_msg = e.stderr or e.stdout or str(e)
-        flash(f"Error refreshing CI: {error_msg}", "danger")
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr or e.stdout or str(e)
+            flash(f"Error refreshing CI: {error_msg}", "danger")
 
-    except Exception as e:
-        flash(f"Error refreshing CI: {str(e)}", "danger")
+        except Exception as e:
+            flash(f"Error refreshing CI: {str(e)}", "danger")
 
-    return redirect(url_for("ci_dashboard"))
+        return redirect(url_for("ci_dashboard"))
