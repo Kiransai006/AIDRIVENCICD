@@ -120,38 +120,47 @@ def register_routes(app):
         return render_template("cart.html", items=items, subtotal=subtotal)
 
     # ---------------- CHECKOUT ----------------
-    @app.route("/checkout", methods=["GET", "POST"])
-    @login_required
-    def checkout():
-        cart = session.get("cart", {})
-        if not cart:
-            flash("Cart is empty", "warning")
-            return redirect(url_for("products"))
+@app.route("/checkout", methods=["GET", "POST"])
+@login_required
+def checkout():
+    cart = session.get("cart", {})
+    if not cart:
+        flash("Cart is empty", "warning")
+        return redirect(url_for("products"))
 
-        items = []
-        total = 0
+    items = []
+    total = 0
 
-        for pid, item in cart.items():
-            items.append(item)
-            total += item["price"] * item["quantity"]
+    for pid, item in cart.items():
+        items.append(item)
+        total += item["price"] * item["quantity"]
 
-        if request.method == "POST":
-            db = get_db()
-            db.orders.insert_one({
-                "user_id": current_user.id,
-                "customer_name": request.form["customer_name"],
-                "address": request.form["address"],
-                "items": items,
-                "total": total,
-                "status": "Placed",
-                "created_at": datetime.utcnow()
-            })
+    if request.method == "POST":
+        db = get_db()
 
-            session.pop("cart", None)
-            flash("Order placed successfully", "success")  # ✅ FIXED
-            return redirect(url_for("orders"))
+        db.orders.insert_one({
+            "user_id": current_user.id,
+            "customer_name": request.form["customer_name"],
+            "address": request.form["address"],
+            "items": items,
+            "total": total,
+            "status": "Placed",
+            "created_at": datetime.utcnow()
+        })
 
-        return render_template("checkout.html", items=items, total=total)
+        session.pop("cart", None)
+
+        # ✅ CRITICAL FIX (no redirect)
+        flash("Order placed successfully", "success")
+
+        orders = list(db.orders.find().sort("created_at", -1))
+        for o in orders:
+            o["_id"] = str(o["_id"])
+            o["items"] = o.get("items", [])
+
+        return render_template("orders.html", orders=orders)
+
+    return render_template("checkout.html", items=items, total=total)
 
     @app.route("/orders")
     @login_required
