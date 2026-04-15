@@ -4,7 +4,6 @@ from datetime import datetime
 from functools import wraps
 import subprocess
 
-from bson import ObjectId
 from flask import (
     abort,
     flash,
@@ -37,7 +36,9 @@ def register_routes(app):
     def admin_required(view_func):
         @wraps(view_func)
         def wrapped(*args, **kwargs):
-            if not current_user.is_authenticated or not getattr(current_user, "is_admin", False):
+            if not current_user.is_authenticated:
+                abort(403)
+            if not getattr(current_user, "is_admin", False):
                 abort(403)
             return view_func(*args, **kwargs)
         return wrapped
@@ -157,7 +158,7 @@ def register_routes(app):
             db = get_db()
             db.orders.insert_one(
                 {
-                    "user_id": current_user.id,
+                    "user_id": current_user.get_id(),
                     "customer_name": customer_name,
                     "address": address,
                     "items": items,
@@ -198,6 +199,7 @@ def register_routes(app):
 
             if user and user.check_password(password):
                 login_user(user)
+                flash("Logged in successfully", "success")
                 return redirect(url_for("dashboard"))
 
             flash("Invalid credentials", "danger")
@@ -209,14 +211,15 @@ def register_routes(app):
         if request.method == "POST":
             db = get_db()
 
-            existing_user = db.users.find_one({"email": request.form["email"].strip().lower()})
+            email = request.form["email"].strip().lower()
+            existing_user = db.users.find_one({"email": email})
             if existing_user:
                 flash("Email already registered", "warning")
                 return redirect(url_for("register"))
 
             user = {
                 "name": request.form["name"],
-                "email": request.form["email"].strip().lower(),
+                "email": email,
                 "password_hash": User.hash_password(request.form["password"]),
                 "is_admin": False,
                 "created_at": datetime.utcnow(),
@@ -240,7 +243,7 @@ def register_routes(app):
         db = get_db()
         return render_template(
             "dashboard.html",
-            my_orders=db.orders.count_documents({"user_id": current_user.id}),
+            my_orders=db.orders.count_documents({"user_id": current_user.get_id()}),
             product_count=db.products.count_documents({}),
             user_count=db.users.count_documents({}),
         )

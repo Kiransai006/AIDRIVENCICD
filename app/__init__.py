@@ -1,29 +1,26 @@
+from __future__ import annotations
+
 import os
+
+from bson import ObjectId
 from flask import Flask
 from flask_login import LoginManager
-from pymongo import MongoClient
-from dotenv import load_dotenv
 
+from .db import get_db
 from .models import User
+from .routes import register_routes
 
 login_manager = LoginManager()
 login_manager.login_view = "login"
-login_manager.login_message_category = "warning"
-
-mongo_client = None
-mongo_db = None
 
 
-def create_app(test_config: dict | None = None):
-    load_dotenv()
+def create_app(test_config: dict | None = None) -> Flask:
+    app = Flask(__name__, instance_relative_config=True)
 
-    app = Flask(__name__)
-    app.config.update(
-        SECRET_KEY=os.getenv("SECRET_KEY", "dev-secret-key"),
-        MONGO_URI=os.getenv("MONGO_URI", "mongodb://localhost:27017/cloudcart"),
-        MONGO_DB_NAME=os.getenv("MONGO_DB_NAME", "cloudcart"),
-        ADMIN_EMAIL=os.getenv("ADMIN_EMAIL", "admin@cloudcart.local"),
-        ADMIN_PASSWORD=os.getenv("ADMIN_PASSWORD", "Admin@123"),
+    app.config.from_mapping(
+        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-key"),
+        MONGO_URI=os.environ.get("MONGO_URI", "mongodb://localhost:27017/cloudcart"),
+        TESTING=False,
     )
 
     if test_config:
@@ -31,31 +28,14 @@ def create_app(test_config: dict | None = None):
 
     login_manager.init_app(app)
 
-    with app.app_context():
-        init_db(app)
+    @login_manager.user_loader
+    def load_user(user_id: str):
+        try:
+            db = get_db()
+            doc = db.users.find_one({"_id": ObjectId(user_id)})
+            return User.from_document(doc)
+        except Exception:
+            return None
 
-    from .routes import register_routes
     register_routes(app)
-
     return app
-
-
-def init_db(app: Flask):
-    global mongo_client, mongo_db
-
-    if app.config.get("MONGO_MOCK"):
-        import mongomock
-        mongo_client = mongomock.MongoClient()
-    else:
-        mongo_client = MongoClient(app.config["MONGO_URI"])
-
-    mongo_db = mongo_client[app.config["MONGO_DB_NAME"]]
-    app.extensions["mongo_db"] = mongo_db
-
-
-@login_manager.user_loader
-def load_user(user_id: str):
-    if mongo_db is None:
-        return None
-    doc = mongo_db.users.find_one({"_id": User.parse_object_id(user_id)})
-    return User.from_document(doc) if doc else None
