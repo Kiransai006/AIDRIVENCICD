@@ -148,7 +148,7 @@ def register_routes(app):
             })
 
             session.pop("cart", None)
-            flash("Order placed!", "success")
+            flash("Order placed successfully", "success")  # ✅ FIXED
             return redirect(url_for("orders"))
 
         return render_template("checkout.html", items=items, total=total)
@@ -218,6 +218,15 @@ def register_routes(app):
             user_count=db.users.count_documents({}),
         )
 
+    # ---------------- ADMIN (FIXED) ----------------
+    @app.route("/admin")
+    @admin_required
+    @login_required
+    def admin_panel():
+        db = get_db()
+        products = [serialize_product(p) for p in db.products.find()]
+        return render_template("admin.html", products=products)
+
     # ---------------- CI DASHBOARD ----------------
     @app.route("/ci-dashboard")
     @login_required
@@ -226,8 +235,6 @@ def register_routes(app):
         return render_template("ci_dashboard.html", data=data)
 
     # ---------------- REFRESH CI ----------------
-
-
     @app.route("/refresh-ci", methods=["POST"])
     @login_required
     def refresh_ci():
