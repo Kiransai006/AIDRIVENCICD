@@ -148,6 +148,7 @@
             text-align: left;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
+            white-space: nowrap;
         }
 
         th {
@@ -237,6 +238,14 @@
             .cards {
                 grid-template-columns: repeat(2, 1fr);
             }
+
+            .table-wrap {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 1300px;
+            }
         }
 
         @media (max-width: 800px) {
@@ -248,28 +257,21 @@
             .cards {
                 grid-template-columns: 1fr;
             }
-
-            .table-wrap {
-                overflow-x: auto;
-            }
-
-            table {
-                min-width: 1100px;
-            }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="topbar">
             <div>
                 <h1>CI/CD Monitoring Dashboard</h1>
-                <p class="subtext">Live GitHub Actions monitoring with AI-based failure risk prediction</p>
+                <p class="subtext">Live GitHub Actions monitoring with ML-based failure prediction</p>
             </div>
 
             <div class="actions">
                 <form method="POST" action="/refresh-ci" style="margin: 0;">
-                    <button type="submit" class="btn btn-primary">Refresh CI Data</button>
+                    <button type="submit" class="btn btn-primary">Refresh CI + Run ML</button>
                 </form>
                 <a href="/dashboard" class="btn btn-secondary">Back to App Dashboard</a>
             </div>
@@ -306,7 +308,7 @@
             </div>
         </div>
 
-        <h2 class="section-title">Recent Workflow Runs with AI Risk</h2>
+        <h2 class="section-title">Recent Workflow Runs with ML Failure Prediction</h2>
 
         <div class="table-wrap">
             <table>
@@ -320,17 +322,20 @@
                         <th>Actor</th>
                         <th>Created At</th>
                         <th>Duration</th>
-                        <th>Failure %</th>
-                        <th>Risk</th>
+                        <th>ML Prediction</th>
+                        <th>ML Failure Probability</th>
+                        <th>ML Risk Level</th>
                         <th>Link</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {% if data.recent_runs %}
                         {% for row in data.recent_runs %}
                         <tr>
                             <td>{{ row.run_id }}</td>
                             <td>{{ row.workflow_name or "N/A" }}</td>
+
                             <td>
                                 {% if row.status == "completed" %}
                                     <span class="badge badge-success">{{ row.status }}</span>
@@ -340,6 +345,7 @@
                                     <span class="badge badge-neutral">{{ row.status or "N/A" }}</span>
                                 {% endif %}
                             </td>
+
                             <td>
                                 {% if row.conclusion == "success" %}
                                     <span class="badge badge-success">{{ row.conclusion }}</span>
@@ -349,10 +355,22 @@
                                     <span class="badge badge-neutral">{{ row.conclusion or "N/A" }}</span>
                                 {% endif %}
                             </td>
+
                             <td>{{ row.branch or "N/A" }}</td>
                             <td>{{ row.actor_login or "N/A" }}</td>
                             <td>{{ row.created_at or "N/A" }}</td>
                             <td>{{ row.duration_seconds if row.duration_seconds is not none else "N/A" }}</td>
+
+                            <td>
+                                {% if row.predicted_target == 1 %}
+                                    <span class="badge badge-failure">Failure Predicted</span>
+                                {% elif row.predicted_target == 0 %}
+                                    <span class="badge badge-success">Success Predicted</span>
+                                {% else %}
+                                    <span class="badge badge-neutral">N/A</span>
+                                {% endif %}
+                            </td>
+
                             <td>
                                 {% if row.failure_probability is not none %}
                                     {{ row.failure_probability }}%
@@ -360,6 +378,7 @@
                                     N/A
                                 {% endif %}
                             </td>
+
                             <td>
                                 {% if row.risk_label == "High" %}
                                     <span class="badge badge-high">High</span>
@@ -371,6 +390,7 @@
                                     <span class="badge badge-neutral">N/A</span>
                                 {% endif %}
                             </td>
+
                             <td>
                                 {% if row.html_url %}
                                     <a href="{{ row.html_url }}" target="_blank">Open</a>
@@ -382,7 +402,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="11" class="empty-state">No CI/CD workflow runs found.</td>
+                            <td colspan="12" class="empty-state">No CI/CD workflow runs found.</td>
                         </tr>
                     {% endif %}
                 </tbody>
