@@ -32,23 +32,62 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
     updated_at TEXT,
     run_started_at TEXT,
     duration_seconds REAL,
+    failure_probability REAL,
+    predicted_target INTEGER,
+    risk_level TEXT,
     source TEXT DEFAULT 'github_actions',
     ingested_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 """
 
 UPSERT_SQL = """
-INSERT OR REPLACE INTO workflow_runs (
+INSERT INTO workflow_runs (
     run_id, name, display_title, status, conclusion, event, branch,
     workflow_id, workflow_name, actor_login, head_sha, html_url,
     created_at, updated_at, run_started_at, duration_seconds, source
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(run_id) DO UPDATE SET
+    name = excluded.name,
+    display_title = excluded.display_title,
+    status = excluded.status,
+    conclusion = excluded.conclusion,
+    event = excluded.event,
+    branch = excluded.branch,
+    workflow_id = excluded.workflow_id,
+    workflow_name = excluded.workflow_name,
+    actor_login = excluded.actor_login,
+    head_sha = excluded.head_sha,
+    html_url = excluded.html_url,
+    created_at = excluded.created_at,
+    updated_at = excluded.updated_at,
+    run_started_at = excluded.run_started_at,
+    duration_seconds = excluded.duration_seconds,
+    source = excluded.source
+;
 """
+
+
+def ensure_prediction_columns(conn):
+    existing_cols = {
+        row[1] for row in conn.execute("PRAGMA table_info(workflow_runs)").fetchall()
+    }
+
+    if "failure_probability" not in existing_cols:
+        conn.execute("ALTER TABLE workflow_runs ADD COLUMN failure_probability REAL")
+
+    if "predicted_target" not in existing_cols:
+        conn.execute("ALTER TABLE workflow_runs ADD COLUMN predicted_target INTEGER")
+
+    if "risk_level" not in existing_cols:
+        conn.execute("ALTER TABLE workflow_runs ADD COLUMN risk_level TEXT")
+
+    conn.commit()
 
 
 def parse_duration_seconds(started_at: str | None, updated_at: str | None) -> float | None:
     if not started_at or not updated_at:
         return None
+
     try:
         start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
         end = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
@@ -58,8 +97,16 @@ def parse_duration_seconds(started_at: str | None, updated_at: str | None) -> fl
 
 
 def fetch_runs(max_pages=5):
-    if not OWNER or not REPO or not TOKEN:
-        raise ValueError("Missing GITHUB_OWNER, GITHUB_REPO, or GITHUB_TOKEN in environment")
+    missing = []
+    if not OWNER:
+        missing.append("GITHUB_OWNER")
+    if not REPO:
+        missing.append("GITHUB_REPO")
+    if not TOKEN:
+        missing.append("GITHUB_TOKEN")
+
+    if missing:
+        raise ValueError(f"Missing environment variables: {', '.join(missing)}")
 
     headers = {
         "Accept": "application/vnd.github+json",
@@ -80,6 +127,7 @@ def fetch_runs(max_pages=5):
         response.raise_for_status()
 
         runs = response.json().get("workflow_runs", [])
+
         if not runs:
             break
 
@@ -97,6 +145,7 @@ def save_runs(runs):
 
     conn = sqlite3.connect(DB_PATH)
     conn.execute(CREATE_TABLE_SQL)
+    ensure_prediction_columns(conn)
 
     for run in runs:
         duration = parse_duration_seconds(run.get("run_started_at"), run.get("updated_at"))
