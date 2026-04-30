@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CI Database View</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            padding: 30px;
+        }
+
+        h1 {
+            color: #111827;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+
+        th {
+            background: #111827;
+            color: white;
+        }
+
+        .btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 16px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <a href="/ci-dashboard" class="btn">Back to CI Dashboard</a>
+
+    <h1>CI/CD SQLite Database View</h1>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Run ID</th>
+                <th>Workflow</th>
+                <th>Status</th>
+                <th>Conclusion</th>
+                <th>Branch</th>
+                <th>Actor</th>
+                <th>Duration</th>
+                <th>Failure Probability</th>
+                <th>Prediction</th>
+                <th>Risk Level</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row["run_id"] }}</td>
+                <td>{{ row["workflow_name"] }}</td>
+                <td>{{ row["status"] }}</td>
+                <td>{{ row["conclusion"] }}</td>
+                <td>{{ row["branch"] }}</td>
+                <td>{{ row["actor_login"] }}</td>
+                <td>{{ row["duration_seconds"] }}</td>
+                <td>{{ row["failure_probability"] }}</td>
+                <td>{{ row["predicted_target"] }}</td>
+                <td>{{ row["risk_level"] }}</td>
+                <td>{{ row["created_at"] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>
