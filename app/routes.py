@@ -659,3 +659,35 @@ def register_routes(app):
             flash(f"Error refreshing CI: {str(e)}", "danger")
 
         return redirect(url_for("ci_dashboard"))
+            @app.route("/ci-database")
+    @login_required
+    def ci_database():
+        import os
+        import sqlite3
+
+        db_path = os.getenv("CI_SQLITE_PATH", "data/processed/ci_monitoring.db")
+
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+
+        rows = conn.execute("""
+            SELECT
+                run_id,
+                workflow_name,
+                status,
+                conclusion,
+                branch,
+                actor_login,
+                duration_seconds,
+                failure_probability,
+                predicted_target,
+                risk_level,
+                created_at
+            FROM workflow_runs
+            ORDER BY created_at DESC
+            LIMIT 50
+        """).fetchall()
+
+        conn.close()
+
+        return render_template("ci_database.html", rows=rows)
