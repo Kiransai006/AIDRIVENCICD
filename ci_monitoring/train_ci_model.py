@@ -17,33 +17,15 @@ from sklearn.preprocessing import OneHotEncoder
 
 load_dotenv()
 
+DB_PATH = os.getenv("CI_SQLITE_PATH", "data/processed/ci_monitoring.db")
+
 DATA_PATH = Path("ci_monitoring/data/ci_runs_ml_dataset.csv")
+PREDICTIONS_PATH = Path("ci_monitoring/data/ci_model_predictions.csv")
 MODELS_DIR = Path("ci_monitoring/models")
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 MODEL_PATH = MODELS_DIR / "best_ci_failure_model.joblib"
 METRICS_PATH = MODELS_DIR / "model_metrics.json"
-PREDICTIONS_PATH = Path("ci_monitoring/data/ci_model_predictions.csv")
-DB_PATH = os.getenv("CI_SQLITE_PATH", "data/processed/ci_monitoring.db")
-
-
-def build_models():
-    return {
-        "logistic_regression": LogisticRegression(max_iter=1000),
-        "random_forest": RandomForestClassifier(
-            n_estimators=200,
-            max_depth=8,
-            random_state=42,
-        ),
-    }
-
-
-def risk_from_probability(probability: float) -> str:
-    if probability >= 0.8:
-        return "High"
-    if probability >= 0.5:
-        return "Medium"
-    return "Low"
 
 
 def ensure_prediction_columns(conn):
@@ -63,14 +45,72 @@ def ensure_prediction_columns(conn):
     conn.commit()
 
 
-def save_predictions_to_sqlite(df_out: pd.DataFrame):
+def risk_from_probability(probability: float) -> str:
+    if probability >= 0.8:
+        return "High"
+    if probability >= 0.5:
+        return "Medium"
+    return "Low"
+
+
+def build_dataset_from_sqlite():
+    conn = sqlite3.connect(DB_PATH)
+
+    query = """
+    SELECT
+        run_id,
+        workflow_name,
+        branch,
+        actor_login,
+        duration_seconds,
+        conclusion
+    FROM workflow_runs
+    WHERE conclusion IN ('success', 'failure')
+    """
+
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+
+    if df.empty:
+        raise ValueError("No completed success/failure CI runs found in SQLite.")
+
+    df["target"] = df["conclusion"].apply(lambda x: 1 if x == "failure" else 0)
+
+    df = df[
+        [
+            "run_id",
+            "workflow_name",
+            "branch",
+            "actor_login",
+            "duration_seconds",
+            "target",
+        ]
+    ]
+
+    DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(DATA_PATH, index=False)
+
+    return df
+
+
+def build_models():
+    return {
+        "logistic_regression": LogisticRegression(max_iter=1000),
+        "random_forest": RandomForestClassifier(
+            n_estimators=200,
+            max_depth=8,
+            random_state=42,
+        ),
+    }
+
+
+def save_predictions_to_sqlite(df_out):
     conn = sqlite3.connect(DB_PATH)
     ensure_prediction_columns(conn)
 
     updated_count = 0
 
     for _, row in df_out.iterrows():
-        run_id = int(row["run_id"])
         probability = float(row["failure_probability"])
         prediction = int(row["predicted_target"])
         risk_level = risk_from_probability(probability)
@@ -83,7 +123,12 @@ def save_predictions_to_sqlite(df_out: pd.DataFrame):
                 risk_level = ?
             WHERE run_id = ?
             """,
-            (probability, prediction, risk_level, run_id),
+            (
+                probability,
+                prediction,
+                risk_level,
+                int(row["run_id"]),
+            ),
         )
 
         updated_count += cursor.rowcount
@@ -95,22 +140,7 @@ def save_predictions_to_sqlite(df_out: pd.DataFrame):
 
 
 def main():
-    if not DATA_PATH.exists():
-        raise FileNotFoundError(f"Missing dataset: {DATA_PATH}")
-
-    df = pd.read_csv(DATA_PATH)
-
-    if df.empty:
-        raise ValueError("Dataset is empty.")
-
-    if "target" not in df.columns:
-        raise ValueError("Dataset must contain 'target' column.")
-
-    if "run_id" not in df.columns:
-        raise ValueError("Dataset must contain 'run_id' column.")
-
-    class_counts = df["target"].value_counts().to_dict()
-    print("Target distribution:", class_counts)
+    df = build_dataset_from_sqlite()
 
     if df["target"].nunique() < 2:
         raise ValueError("Need both success and failure rows before training.")
@@ -161,17 +191,12 @@ def main():
             stratify=y,
         )
 
-    if len(set(y_train)) < 2:
-        print("Training split has only one class. Falling back to full dataset.")
-        X_train, X_test = X, X
-        y_train, y_test = y, y
-
     models = build_models()
-    results = {}
 
     best_name = None
     best_pipeline = None
     best_f1 = -1
+    results = {}
 
     for model_name, model in models.items():
         pipeline = Pipeline(
@@ -208,20 +233,6 @@ def main():
 
     joblib.dump(best_pipeline, MODEL_PATH)
 
-    metrics_payload = {
-        "best_model": best_name,
-        "results": results,
-        "train_rows": int(len(X_train)),
-        "test_rows": int(len(X_test)),
-        "feature_columns": feature_cols,
-        "used_full_dataset_fallback": bool(
-            len(X_train) == len(df) and len(X_test) == len(df)
-        ),
-    }
-
-    with open(METRICS_PATH, "w", encoding="utf-8") as f:
-        json.dump(metrics_payload, f, indent=2)
-
     df_out = df.copy()
     df_out["predicted_target"] = best_pipeline.predict(X)
 
@@ -237,14 +248,20 @@ def main():
 
     save_predictions_to_sqlite(df_out)
 
+    metrics_payload = {
+        "best_model": best_name,
+        "results": results,
+        "rows_used": int(len(df)),
+        "feature_columns": feature_cols,
+    }
+
+    with open(METRICS_PATH, "w", encoding="utf-8") as f:
+        json.dump(metrics_payload, f, indent=2)
+
     print(f"Best model: {best_name}")
     print(f"Saved model: {MODEL_PATH}")
     print(f"Saved metrics: {METRICS_PATH}")
     print(f"Saved predictions: {PREDICTIONS_PATH}")
-
-    print("\nModel results:")
-    for name, metrics in results.items():
-        print(f"- {name}: accuracy={metrics['accuracy']}, f1={metrics['f1_score']}")
 
 
 if __name__ == "__main__":
