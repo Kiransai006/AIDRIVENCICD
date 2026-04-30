@@ -72,3 +72,7 @@ def test_admin_panel_requires_admin():
         register_and_login(client)
         response = client.get("/admin")
         assert response.status_code == 403
+        
+def test_intentional_failure_for_ci_data():
+    """Temporary test to generate a CI failure run — delete after push."""
+    assert False, "Intentional failure to generate CI run data"
