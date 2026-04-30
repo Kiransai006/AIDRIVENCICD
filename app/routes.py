@@ -336,6 +336,7 @@ from .db import get_db, get_product_by_id, initialize_data, serialize_product
 from .models import User
 
 
+
 def register_routes(app):
     with app.app_context():
         initialize_data()
