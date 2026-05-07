@@ -22,6 +22,18 @@ def risk_from_probability(probability: float) -> str:
     return "Low"
 
 
+def clean_run_id(value) -> int:
+    """
+    Converts CSV run_id safely into an integer that matches SQLite run_id.
+    Handles values like:
+    - 24428589180
+    - "24428589180"
+    - "24428589180.0"
+    - 24428589180.0
+    """
+    return int(float(str(value).strip()))
+
+
 def ensure_prediction_columns(conn):
     existing_cols = {
         row[1] for row in conn.execute("PRAGMA table_info(workflow_runs)").fetchall()
@@ -53,6 +65,9 @@ def main():
         print("Input dataset is empty. No predictions generated.")
         return
 
+    if "run_id" not in df.columns:
+        raise ValueError("Input dataset must contain run_id column.")
+
     feature_cols = [c for c in df.columns if c not in ["target", "run_id"]]
     X = df[feature_cols].copy()
 
@@ -65,8 +80,19 @@ def main():
 
     df["risk_level"] = df["failure_probability"].apply(risk_from_probability)
 
+    # Clean run_id before saving/updating
+    df["run_id_clean"] = df["run_id"].apply(clean_run_id)
+
     PREDICTIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    df[["run_id", "target", "predicted_target", "failure_probability", "risk_level"]].to_csv(
+    df[
+        [
+            "run_id_clean",
+            "target",
+            "predicted_target",
+            "failure_probability",
+            "risk_level",
+        ]
+    ].rename(columns={"run_id_clean": "run_id"}).to_csv(
         PREDICTIONS_PATH,
         index=False,
     )
@@ -74,8 +100,10 @@ def main():
     conn = sqlite3.connect(DB_PATH)
     ensure_prediction_columns(conn)
 
+    updated_count = 0
+
     for _, row in df.iterrows():
-        conn.execute(
+        cursor = conn.execute(
             """
             UPDATE workflow_runs
             SET failure_probability = ?,
@@ -87,15 +115,42 @@ def main():
                 float(row["failure_probability"]),
                 int(row["predicted_target"]),
                 row["risk_level"],
-                int(row["run_id"]),
+                int(row["run_id_clean"]),
             ),
         )
+        updated_count += cursor.rowcount
 
     conn.commit()
+
+    check_rows = conn.execute(
+        """
+        SELECT run_id, failure_probability, predicted_target, risk_level
+        FROM workflow_runs
+        WHERE failure_probability IS NOT NULL
+        ORDER BY created_at DESC
+        LIMIT 5
+        """
+    ).fetchall()
+
     conn.close()
 
     print("Predictions saved to CSV and SQLite successfully.")
-    print(df[["run_id", "target", "predicted_target", "failure_probability", "risk_level"]])
+    print(f"SQLite rows updated: {updated_count}")
+    print("Sample updated DB rows:")
+    for row in check_rows:
+        print(row)
+
+    print(
+        df[
+            [
+                "run_id_clean",
+                "target",
+                "predicted_target",
+                "failure_probability",
+                "risk_level",
+            ]
+        ].rename(columns={"run_id_clean": "run_id"})
+    )
 
 
 if __name__ == "__main__":
