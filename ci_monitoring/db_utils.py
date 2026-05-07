@@ -13,19 +13,23 @@ def get_ci_connection():
     return conn
 
 
-def ensure_prediction_columns(conn):
+def ensure_dashboard_columns(conn):
     existing_cols = {
         row[1] for row in conn.execute("PRAGMA table_info(workflow_runs)").fetchall()
     }
 
-    if "failure_probability" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN failure_probability REAL")
+    columns = {
+        "failure_probability": "REAL",
+        "predicted_target": "INTEGER",
+        "risk_level": "TEXT",
+        "remediation_status": "TEXT",
+        "remediation_message": "TEXT",
+        "remediation_created_at": "TEXT",
+    }
 
-    if "predicted_target" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN predicted_target INTEGER")
-
-    if "risk_level" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN risk_level TEXT")
+    for col, col_type in columns.items():
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE workflow_runs ADD COLUMN {col} {col_type}")
 
     conn.commit()
 
@@ -38,14 +42,14 @@ def risk_label_from_probability(probability):
 
     if probability >= 0.8:
         return "High"
-    elif probability >= 0.5:
+    if probability >= 0.5:
         return "Medium"
     return "Low"
 
 
 def get_ci_summary():
     conn = get_ci_connection()
-    ensure_prediction_columns(conn)
+    ensure_dashboard_columns(conn)
 
     total_runs = conn.execute(
         "SELECT COUNT(*) AS count FROM workflow_runs"
@@ -87,7 +91,10 @@ def get_ci_summary():
             html_url,
             failure_probability,
             predicted_target,
-            risk_level
+            risk_level,
+            remediation_status,
+            remediation_message,
+            remediation_created_at
         FROM workflow_runs
         ORDER BY created_at DESC
         LIMIT 20
@@ -122,6 +129,9 @@ def get_ci_summary():
                 "predicted_target": row["predicted_target"],
                 "failure_probability": probability_display,
                 "risk_label": risk_label,
+                "remediation_status": row["remediation_status"],
+                "remediation_message": row["remediation_message"],
+                "remediation_created_at": row["remediation_created_at"],
             }
         )
 
