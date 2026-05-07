@@ -133,7 +133,7 @@
         .table-wrap {
             background: white;
             border-radius: 12px;
-            overflow: hidden;
+            overflow-x: auto;
             box-shadow: 0 4px 14px rgba(0,0,0,0.08);
         }
 
@@ -141,6 +141,7 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
+            min-width: 1600px;
         }
 
         th, td {
@@ -175,6 +176,26 @@
 
         a:hover {
             text-decoration: underline;
+        }
+
+        details summary {
+            cursor: pointer;
+            color: #2563eb;
+            font-weight: 700;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            font-family: Arial, sans-serif;
+            max-width: 440px;
+            margin: 10px 0 0 0;
+            padding: 12px;
+            border-radius: 10px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            color: #111827;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
         .badge {
@@ -238,14 +259,6 @@
             .cards {
                 grid-template-columns: repeat(2, 1fr);
             }
-
-            .table-wrap {
-                overflow-x: auto;
-            }
-
-            table {
-                min-width: 1300px;
-            }
         }
 
         @media (max-width: 800px) {
@@ -266,13 +279,14 @@
         <div class="topbar">
             <div>
                 <h1>CI/CD Monitoring Dashboard</h1>
-                <p class="subtext">Live GitHub Actions monitoring with ML-based failure prediction</p>
+                <p class="subtext">Live GitHub Actions monitoring with ML-based failure prediction and auto remediation</p>
             </div>
 
             <div class="actions">
                 <form method="POST" action="/refresh-ci" style="margin: 0;">
-                    <button type="submit" class="btn btn-primary">Refresh CI + Run ML</button>
+                    <button type="submit" class="btn btn-primary">Refresh CI + Run ML + Auto Remediation</button>
                 </form>
+                <a href="/ci-database" class="btn btn-secondary">View CI Database</a>
                 <a href="/dashboard" class="btn btn-secondary">Back to App Dashboard</a>
             </div>
         </div>
@@ -308,7 +322,7 @@
             </div>
         </div>
 
-        <h2 class="section-title">Recent Workflow Runs with ML Failure Prediction</h2>
+        <h2 class="section-title">Recent Workflow Runs with ML Failure Prediction and Auto Remediation</h2>
 
         <div class="table-wrap">
             <table>
@@ -325,6 +339,8 @@
                         <th>ML Prediction</th>
                         <th>ML Failure Probability</th>
                         <th>ML Risk Level</th>
+                        <th>Auto Remediation</th>
+                        <th>Suggested Fix</th>
                         <th>Link</th>
                     </tr>
                 </thead>
@@ -392,6 +408,25 @@
                             </td>
 
                             <td>
+                                {% if row.remediation_status %}
+                                    <span class="badge badge-medium">{{ row.remediation_status }}</span>
+                                {% else %}
+                                    <span class="badge badge-neutral">N/A</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if row.remediation_message %}
+                                    <details>
+                                        <summary>View Fix</summary>
+                                        <pre>{{ row.remediation_message }}</pre>
+                                    </details>
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+
+                            <td>
                                 {% if row.html_url %}
                                     <a href="{{ row.html_url }}" target="_blank">Open</a>
                                 {% else %}
@@ -402,7 +437,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="12" class="empty-state">No CI/CD workflow runs found.</td>
+                            <td colspan="14" class="empty-state">No CI/CD workflow runs found.</td>
                         </tr>
                     {% endif %}
                 </tbody>
