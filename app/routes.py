@@ -346,6 +346,9 @@ def register_routes(app):
                 failure_probability,
                 predicted_target,
                 risk_level,
+                remediation_status,
+                remediation_message,
+                remediation_created_at,
                 created_at
             FROM workflow_runs
             ORDER BY created_at DESC
@@ -357,7 +360,7 @@ def register_routes(app):
 
         return render_template("ci_database.html", rows=rows)
 
-    # ---------------- REFRESH CI + RUN ML ----------------
+    # ---------------- REFRESH CI + RUN ML + AUTO REMEDIATION ----------------
     @app.route("/refresh-ci", methods=["POST"])
     @login_required
     def refresh_ci():
@@ -380,8 +383,17 @@ def register_routes(app):
                 capture_output=True,
                 text=True,
             )
+            subprocess.run(
+                [sys.executable, "ci_monitoring/auto_remediation.py"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
-            flash("CI data refreshed successfully!", "success")
+            flash(
+                "CI data, ML prediction, and auto remediation completed successfully!",
+                "success",
+            )
 
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr or e.stdout or str(e)
