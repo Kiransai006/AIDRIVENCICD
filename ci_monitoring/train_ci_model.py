@@ -28,19 +28,27 @@ MODEL_PATH = MODELS_DIR / "best_ci_failure_model.joblib"
 METRICS_PATH = MODELS_DIR / "model_metrics.json"
 
 
-def ensure_prediction_columns(conn):
+def clean_run_id(value) -> int:
+    return int(float(str(value).strip()))
+
+
+def ensure_workflow_columns(conn):
     existing_cols = {
         row[1] for row in conn.execute("PRAGMA table_info(workflow_runs)").fetchall()
     }
 
-    if "failure_probability" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN failure_probability REAL")
+    columns = {
+        "failure_probability": "REAL",
+        "predicted_target": "INTEGER",
+        "risk_level": "TEXT",
+        "remediation_status": "TEXT",
+        "remediation_message": "TEXT",
+        "remediation_created_at": "TEXT",
+    }
 
-    if "predicted_target" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN predicted_target INTEGER")
-
-    if "risk_level" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN risk_level TEXT")
+    for col_name, col_type in columns.items():
+        if col_name not in existing_cols:
+            conn.execute(f"ALTER TABLE workflow_runs ADD COLUMN {col_name} {col_type}")
 
     conn.commit()
 
@@ -74,6 +82,7 @@ def build_dataset_from_sqlite():
     if df.empty:
         raise ValueError("No completed success/failure CI runs found in SQLite.")
 
+    df["run_id"] = df["run_id"].apply(clean_run_id)
     df["target"] = df["conclusion"].apply(lambda x: 1 if x == "failure" else 0)
 
     df = df[
@@ -106,7 +115,7 @@ def build_models():
 
 def save_predictions_to_sqlite(df_out):
     conn = sqlite3.connect(DB_PATH)
-    ensure_prediction_columns(conn)
+    ensure_workflow_columns(conn)
 
     updated_count = 0
 
@@ -114,6 +123,7 @@ def save_predictions_to_sqlite(df_out):
         probability = float(row["failure_probability"])
         prediction = int(row["predicted_target"])
         risk_level = risk_from_probability(probability)
+        run_id = clean_run_id(row["run_id"])
 
         cursor = conn.execute(
             """
@@ -127,16 +137,30 @@ def save_predictions_to_sqlite(df_out):
                 probability,
                 prediction,
                 risk_level,
-                int(row["run_id"]),
+                run_id,
             ),
         )
 
         updated_count += cursor.rowcount
 
     conn.commit()
+
+    sample_rows = conn.execute(
+        """
+        SELECT run_id, failure_probability, predicted_target, risk_level
+        FROM workflow_runs
+        WHERE failure_probability IS NOT NULL
+        ORDER BY created_at DESC
+        LIMIT 5
+        """
+    ).fetchall()
+
     conn.close()
 
     print(f"Updated SQLite predictions for {updated_count} workflow runs.")
+    print("Sample updated prediction rows:")
+    for row in sample_rows:
+        print(row)
 
 
 def main():
@@ -242,6 +266,7 @@ def main():
         df_out["failure_probability"] = 0.0
 
     df_out["risk_level"] = df_out["failure_probability"].apply(risk_from_probability)
+    df_out["run_id"] = df_out["run_id"].apply(clean_run_id)
 
     PREDICTIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
     df_out.to_csv(PREDICTIONS_PATH, index=False)
