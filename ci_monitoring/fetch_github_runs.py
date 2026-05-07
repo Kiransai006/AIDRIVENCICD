@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
     failure_probability REAL,
     predicted_target INTEGER,
     risk_level TEXT,
+    remediation_status TEXT,
+    remediation_message TEXT,
+    remediation_created_at TEXT,
     source TEXT DEFAULT 'github_actions',
     ingested_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -67,19 +70,25 @@ ON CONFLICT(run_id) DO UPDATE SET
 """
 
 
-def ensure_prediction_columns(conn):
+def ensure_workflow_columns(conn):
     existing_cols = {
         row[1] for row in conn.execute("PRAGMA table_info(workflow_runs)").fetchall()
     }
 
-    if "failure_probability" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN failure_probability REAL")
+    columns = {
+        "failure_probability": "REAL",
+        "predicted_target": "INTEGER",
+        "risk_level": "TEXT",
+        "remediation_status": "TEXT",
+        "remediation_message": "TEXT",
+        "remediation_created_at": "TEXT",
+    }
 
-    if "predicted_target" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN predicted_target INTEGER")
-
-    if "risk_level" not in existing_cols:
-        conn.execute("ALTER TABLE workflow_runs ADD COLUMN risk_level TEXT")
+    for column_name, column_type in columns.items():
+        if column_name not in existing_cols:
+            conn.execute(
+                f"ALTER TABLE workflow_runs ADD COLUMN {column_name} {column_type}"
+            )
 
     conn.commit()
 
@@ -98,6 +107,7 @@ def parse_duration_seconds(started_at: str | None, updated_at: str | None) -> fl
 
 def fetch_runs(max_pages=5):
     missing = []
+
     if not OWNER:
         missing.append("GITHUB_OWNER")
     if not REPO:
@@ -145,10 +155,13 @@ def save_runs(runs):
 
     conn = sqlite3.connect(DB_PATH)
     conn.execute(CREATE_TABLE_SQL)
-    ensure_prediction_columns(conn)
+    ensure_workflow_columns(conn)
 
     for run in runs:
-        duration = parse_duration_seconds(run.get("run_started_at"), run.get("updated_at"))
+        duration = parse_duration_seconds(
+            run.get("run_started_at"),
+            run.get("updated_at"),
+        )
 
         values = (
             run.get("id"),
