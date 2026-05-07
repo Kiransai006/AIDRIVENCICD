@@ -54,7 +54,11 @@ def test_register_login_checkout_flow():
             product = db.products.find_one({})
             product_id = str(product["_id"])
 
-        add_response = client.post(f"/cart/add/{product_id}", data={"quantity": 1}, follow_redirects=True)
+        add_response = client.post(
+            f"/cart/add/{product_id}",
+            data={"quantity": 1},
+            follow_redirects=True,
+        )
         assert add_response.status_code == 200
 
         checkout_response = client.post(
@@ -72,7 +76,3 @@ def test_admin_panel_requires_admin():
         register_and_login(client)
         response = client.get("/admin")
         assert response.status_code == 403
-        
-def test_intentional_failure_for_ci_data():
-    """Temporary test to generate a CI failure run — delete after push."""
-    assert False, "Intentional failure to generate CI run data"
