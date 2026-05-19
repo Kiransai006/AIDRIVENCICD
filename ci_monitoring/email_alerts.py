@@ -40,6 +40,8 @@ def send_email_alert(subject, body):
             "GMAIL_SENDER, GMAIL_APP_PASSWORD, ALERT_RECEIVER"
         )
 
+    app_password = GMAIL_APP_PASSWORD.replace(" ", "").strip()
+
     message = MIMEMultipart()
     message["From"] = GMAIL_SENDER
     message["To"] = ALERT_RECEIVER
@@ -48,7 +50,7 @@ def send_email_alert(subject, body):
     message.attach(MIMEText(body, "plain"))
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(GMAIL_SENDER, GMAIL_APP_PASSWORD)
+        server.login(GMAIL_SENDER, app_password)
         server.send_message(message)
 
 
@@ -61,10 +63,18 @@ def build_email_body(row):
         else "N/A"
     )
 
+    prediction_text = (
+        "Failure Predicted"
+        if row["predicted_target"] == 1
+        else "Success Predicted"
+        if row["predicted_target"] == 0
+        else "N/A"
+    )
+
     return f"""
 CI/CD Monitoring Alert
 
-A high-risk or failed CI/CD workflow run has been detected.
+A CI/CD workflow run requires attention.
 
 Workflow: {row["workflow_name"]}
 Run ID: {row["run_id"]}
@@ -73,8 +83,11 @@ Actor: {row["actor_login"]}
 Conclusion: {row["conclusion"]}
 Duration: {row["duration_seconds"]} seconds
 
+ML Prediction: {prediction_text}
 ML Failure Probability: {probability_text}
 ML Risk Level: {row["risk_level"] or "N/A"}
+
+Auto Remediation Status: {row["remediation_status"] or "N/A"}
 
 Suggested Auto Remediation:
 {row["remediation_message"] or "No remediation message available."}
@@ -102,15 +115,19 @@ def main():
             actor_login,
             duration_seconds,
             failure_probability,
+            predicted_target,
             risk_level,
+            remediation_status,
             remediation_message,
             html_url
         FROM workflow_runs
         WHERE
             (
-                risk_level = 'High'
+                risk_level IN ('High', 'Medium')
                 OR conclusion = 'failure'
-                OR failure_probability >= 0.8
+                OR predicted_target = 1
+                OR failure_probability >= 0.5
+                OR remediation_status = 'Generated'
             )
             AND COALESCE(email_alert_sent, 0) = 0
         ORDER BY created_at DESC
@@ -120,8 +137,13 @@ def main():
 
     sent_count = 0
 
+    print(f"Rows eligible for Gmail alert: {len(rows)}")
+
     for row in rows:
-        subject = f"CI/CD Alert: {row['workflow_name']} - {row['risk_level'] or row['conclusion']}"
+        subject = (
+            f"CI/CD Alert: {row['workflow_name']} - "
+            f"{row['risk_level'] or row['conclusion'] or 'Attention Required'}"
+        )
 
         body = build_email_body(row)
 
