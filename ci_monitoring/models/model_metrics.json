@@ -2,69 +2,69 @@
   "best_model": "random_forest",
   "results": {
     "logistic_regression": {
-      "accuracy": 0.5333,
+      "accuracy": 0.4118,
       "f1_score": 0.0,
       "classification_report": {
         "0": {
-          "precision": 0.5333333333333333,
-          "recall": 1.0,
-          "f1-score": 0.6956521739130435,
-          "support": 8.0
+          "precision": 0.4666666666666667,
+          "recall": 0.7777777777777778,
+          "f1-score": 0.5833333333333334,
+          "support": 9.0
         },
         "1": {
           "precision": 0.0,
           "recall": 0.0,
           "f1-score": 0.0,
-          "support": 7.0
+          "support": 8.0
         },
-        "accuracy": 0.5333333333333333,
+        "accuracy": 0.4117647058823529,
         "macro avg": {
-          "precision": 0.26666666666666666,
-          "recall": 0.5,
-          "f1-score": 0.34782608695652173,
-          "support": 15.0
+          "precision": 0.23333333333333334,
+          "recall": 0.3888888888888889,
+          "f1-score": 0.2916666666666667,
+          "support": 17.0
         },
         "weighted avg": {
-          "precision": 0.28444444444444444,
-          "recall": 0.5333333333333333,
-          "f1-score": 0.3710144927536232,
-          "support": 15.0
+          "precision": 0.24705882352941178,
+          "recall": 0.4117647058823529,
+          "f1-score": 0.3088235294117647,
+          "support": 17.0
         }
       }
     },
     "random_forest": {
-      "accuracy": 0.6,
-      "f1_score": 0.25,
+      "accuracy": 0.6471,
+      "f1_score": 0.5,
       "classification_report": {
         "0": {
-          "precision": 0.5714285714285714,
-          "recall": 1.0,
+          "precision": 0.6153846153846154,
+          "recall": 0.8888888888888888,
           "f1-score": 0.7272727272727273,
-          "support": 8.0
+          "support": 9.0
         },
         "1": {
-          "precision": 1.0,
-          "recall": 0.14285714285714285,
-          "f1-score": 0.25,
-          "support": 7.0
+          "precision": 0.75,
+          "recall": 0.375,
+          "f1-score": 0.5,
+          "support": 8.0
         },
-        "accuracy": 0.6,
+        "accuracy": 0.6470588235294118,
         "macro avg": {
-          "precision": 0.7857142857142857,
-          "recall": 0.5714285714285714,
-          "f1-score": 0.48863636363636365,
-          "support": 15.0
+          "precision": 0.6826923076923077,
+          "recall": 0.6319444444444444,
+          "f1-score": 0.6136363636363636,
+          "support": 17.0
         },
         "weighted avg": {
-          "precision": 0.7714285714285715,
-          "recall": 0.6,
-          "f1-score": 0.5045454545454545,
-          "support": 15.0
+          "precision": 0.6787330316742082,
+          "recall": 0.6470588235294118,
+          "f1-score": 0.6203208556149733,
+          "support": 17.0
         }
       }
     }
   },
-  "rows_used": 49,
+  "rows_used": 56,
   "feature_columns": [
     "workflow_name",
     "branch",

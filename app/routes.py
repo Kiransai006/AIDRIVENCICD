@@ -658,7 +658,7 @@ def register_routes(app):
 
         return render_template("login.html")
 
-    ("/register", methods=["GET", "POST"])
+    @app.route("/register", methods=["GET", "POST"])
     def register():
         if request.method == "POST":
             db = get_db()
