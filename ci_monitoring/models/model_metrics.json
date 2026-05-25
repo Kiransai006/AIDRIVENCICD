@@ -64,7 +64,7 @@
       }
     }
   },
-  "rows_used": 48,
+  "rows_used": 49,
   "feature_columns": [
     "workflow_name",
     "branch",

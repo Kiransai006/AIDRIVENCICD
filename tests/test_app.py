@@ -76,32 +76,6 @@ def test_admin_panel_requires_admin():
         register_and_login(client)
         response = client.get("/admin")
         assert response.status_code == 403
-
-
-# ──────────────────────────────────────────────────────────────────
-# INTENTIONAL FAILURE — triggers auto-remediation pipeline
-# ──────────────────────────────────────────────────────────────────
-
-def test_cart_price_calculation():
-    """
-    INJECTED FAILURE: wrong expected total.
-    Real: 3 * 49.99 = 149.97  →  we assert 999  →  AssertionError
-    This pushes test_error_count up → risk score crosses 0.65
-    → Decision Engine triggers RERUN_TESTS action
-    """
-    price = 49.99
-    quantity = 3
-    total = round(price * quantity, 2)
-    assert total == 999, f"ERROR: Cart total wrong. Expected 999, got {total}"
-
-
-def test_discount_logic():
-    """
-    INJECTED FAILURE: discount calculation is wrong on purpose.
-    Simulates a developer breaking promo code logic.
-    Produces a second ERROR in logs → confirms High risk signal.
-    """
-    original_price = 100.00
-    discount_percent = 20
-    discounted = original_price - (original_price * discount_percent / 100)
-    assert discounted == 999, f"ERROR: Discount wrong. Expected 999, got {discounted}"
+def test_intentional_failure():
+    """This test is meant to fail - to trigger auto remediation"""
+    assert 1 == 2, "Intentional failure to test auto remediation pipeline"
