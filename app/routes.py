@@ -429,7 +429,7 @@ from .db import get_db, get_product_by_id, initialize_data, serialize_product
 from .models import User
 
 
-register_routes(app):
+def register_routes(app):
     with app.app_context():
         initialize_data()
 
@@ -658,7 +658,7 @@ register_routes(app):
 
         return render_template("login.html")
 
-    @app.route("/register", methods=["GET", "POST"])
+    ("/register", methods=["GET", "POST"])
     def register():
         if request.method == "POST":
             db = get_db()
