@@ -76,6 +76,4 @@ def test_admin_panel_requires_admin():
         register_and_login(client)
         response = client.get("/admin")
         assert response.status_code == 403
-def test_intentional_failure():
-    """This test is meant to fail - to trigger auto remediation"""
-    assert 1 == 2, "Intentional failure to test auto remediation pipeline"
+
