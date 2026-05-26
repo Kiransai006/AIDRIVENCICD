@@ -6,7 +6,7 @@ FEATURES_PATH = Path("ci_monitoring/data/ci_runs_features.csv")
 ML_PATH = Path("ci_monitoring/data/ci_runs_ml_dataset.csv")
 
 
-def main():
+main():
     if not INPUT_PATH.exists():
         raise FileNotFoundError(f"Missing file: {INPUT_PATH}")
 
